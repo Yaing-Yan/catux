@@ -1,0 +1,5 @@
+build/
+catux.elf
+catux.iso
+iso/
+*.o
