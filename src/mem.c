@@ -134,3 +134,8 @@ uint32_t mem_free_frames(void)
 {
     return frame_free;
 }
+
+uint32_t mem_total_frames(void)
+{
+    return frame_total;
+}

@@ -20,11 +20,16 @@
 
 static uint32_t ticks;          /* 总滴答数 */
 
+/* 以前每秒在这里打印 uptime——现在 shell 的 uptime 命令接管了，
+ * 内核的心跳安静下来，屏幕留给用户。 */
 static void timer_tick(void)
 {
     ticks++;
-    if (ticks % 100 == 0)       /* 每 100 滴 = 1 秒：报一次运行时间 */
-        kprintf("[CatUX uptime: %d s]\n", ticks / 100);
+}
+
+uint32_t timer_uptime(void)
+{
+    return ticks / 100;
 }
 
 void timer_init(void)

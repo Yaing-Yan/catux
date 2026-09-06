@@ -18,5 +18,8 @@ uint32_t alloc_frame(void);
 /* 归还一个页帧（传 alloc_frame 返回的地址） */
 void free_frame(uint32_t frame_addr);
 
-/* 当前还剩多少空闲页帧（meminfo 命令以后会用） */
+/* 当前还剩多少空闲页帧（meminfo 命令用） */
 uint32_t mem_free_frames(void);
+
+/* 管辖的总页帧数 */
+uint32_t mem_total_frames(void);

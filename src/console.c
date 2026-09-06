@@ -15,6 +15,7 @@
 
 #include "console.h"
 #include "io.h"
+#include "string.h"
 
 #define VGA_COLS 80
 #define VGA_ROWS 25
@@ -151,6 +152,11 @@ static void emit(char ch)
 void console_init(void)
 {
     serial_init();
+    console_clear();
+}
+
+void console_clear(void)
+{
     for (int r = 0; r < VGA_ROWS; r++)          /* 整屏刷成空格 */
         for (int c = 0; c < VGA_COLS; c++)
             VGA_MEM[r * VGA_COLS + c] = (uint16_t)((cur_color << 8) | ' ');
@@ -159,9 +165,28 @@ void console_init(void)
     vga_update_cursor();
 }
 
+void kputc(char ch)
+{
+    emit(ch);
+}
+
+void console_backspace(void)
+{
+    if (cur_col == 0)
+        return;                       /* 行首退格：先不支持（要滚动配合） */
+    cur_col--;
+    VGA_MEM[cur_row * VGA_COLS + cur_col] =
+        (uint16_t)((cur_color << 8) | ' ');
+    vga_update_cursor();
+    serial_putc('\b');                /* 终端上也要擦：退格、空格覆盖、再退格 */
+    serial_putc(' ');
+    serial_putc('\b');
+}
+
 /* kprintf —— 迷你 printf。
  * 原理：扫描格式串；普通字符直接输出；遇到 % 就看下一个字符决定
- * 从参数列表（va_arg）里取什么类型的参数、按什么格式打。 */
+ * 从参数列表（va_arg）里取什么类型的参数、按什么格式打。
+ * 额外支持 %s 的宽度语法：%-10s（左对齐、占 10 列）、%8s（右对齐）。 */
 void kprintf(const char *fmt, ...)
 {
     va_list ap;
@@ -172,14 +197,33 @@ void kprintf(const char *fmt, ...)
             emit(*p);
             continue;
         }
-        switch (*++p) {                 /* 跳过 '%'，看下一个字符 */
+        p++;                            /* 跳过 '%' */
+        int left = 0, width = 0;        /* 解析标志和宽度（仅 %s 使用） */
+        if (*p == '-') {
+            left = 1;
+            p++;
+        }
+        while (*p >= '0' && *p <= '9') {
+            width = width * 10 + (*p - '0');
+            p++;
+        }
+        switch (*p) {                   /* 跳过 '%'，看下一个字符 */
         case 'c':                       /* %c —— 注意：可变参数里 char 被提升成 int */
             emit((char)va_arg(ap, int));
             break;
-        case 's':                       /* %s */
-            for (const char *s = va_arg(ap, const char *); *s; s++)
+        case 's': {                     /* %s —— 支持宽度对齐 */
+            const char *s = va_arg(ap, const char *);
+            int n = (int)kstrlen(s);
+            if (!left)                  /* 右对齐：先补空格再打字 */
+                for (int i = n; i < width; i++)
+                    emit(' ');
+            for (; *s; s++)
                 emit(*s);
+            if (left)                   /* 左对齐：先打字再补空格 */
+                for (int i = n; i < width; i++)
+                    emit(' ');
             break;
+        }
         case 'd': {                     /* %d —— 有符号，先处理负号 */
             int n = va_arg(ap, int);
             if (n < 0) {

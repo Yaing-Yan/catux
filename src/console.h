@@ -13,3 +13,12 @@ void kprintf(const char *fmt, ...);
 /* 设置后续打印的颜色。
  * 取值：0黑 1蓝 2绿 3青 4红 5品红 6棕 7浅灰，8~15 是对应的亮色 */
 void vga_set_color(uint8_t fg, uint8_t bg);
+
+/* 输出单个字符（屏幕+串口镜像） */
+void kputc(char ch);
+
+/* 清屏并复位光标 */
+void console_clear(void);
+
+/* 退格：光标左移一格并擦掉那个字符（屏幕和串口同步擦） */
+void console_backspace(void);
