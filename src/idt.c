@@ -21,6 +21,7 @@
 #include "console.h"
 #include "irq.h"
 #include "pic.h"
+#include "task.h"
 
 /* 门描述符：8 字节。packed 禁止编译器塞对齐空隙——
  * 硬件按字节逐个读，多一个空隙就全错位了 */
@@ -190,11 +191,19 @@ void irq_register(int irq, irq_handler_t handler)
  *      ⚠️ 不发 EOI 的后果：PIC 认为你还在忙，之后时钟永远
  *      只响一拍就沉默。
  * 验收：屏幕每秒出现一行 [CatUX uptime: N s] */
-void irq_dispatch(uint32_t num, uint32_t err)
+uint32_t irq_dispatch(uint32_t num, uint32_t err, struct regs *r)
 {
     (void)err;   /* IRQ 没有 CPU 错误码，恒为桩补的 0 */
     int n = (int)num - 32;
     if (n >= 0 && n < 16 && irq_handlers[n])
         irq_handlers[n]();
-    pic_send_eoi(n);
+
+    if (n >= 0 && n < 16)
+        pic_send_eoi(n);
+
+    /* 时钟中断是调度点：问调度器要不要换任务。
+     * 返回新任务的保存帧地址，汇编桩会跳过去恢复。 */
+    if (num == 32)
+        return schedule(r);
+    return 0;
 }

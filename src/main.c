@@ -20,7 +20,10 @@
 #include "mem.h"
 #include "paging.h"
 #include "heap.h"
+#include "task.h"
 #include "shell.h"
+
+static void demo_thread(void);   /* 定义在文件末尾 */
 
 void kmain(uint32_t magic, uint32_t addr)
 {
@@ -36,7 +39,7 @@ void kmain(uint32_t magic, uint32_t addr)
     paging_init();       /* 开分页：虚拟内存上线 */
     heap_init();         /* kmalloc/kfree 就绪 */
 
-    kprintf("CatUX v0.0.8 by GLM-5.3-Flash and Yaing Yan\n");
+    kprintf("CatUX v0.0.9 by GLM-5.3-Flash and Yaing Yan\n");
     kprintf("boot ok, multiboot magic=%x\n", magic);
 
     /* ---- 自检 ---- */
@@ -55,10 +58,29 @@ void kmain(uint32_t magic, uint32_t addr)
     kprintf("frames[%d free] irq[timer+keyboard] -- all systems nominal\n\n",
             mem_free_frames());
 
+    /* ---- 阶段 4：多任务！----
+     * demo 线程每约 2 秒打一个 '+'。你会在 shell 提示符旁看到
+     * 它们冒出来——那是另一个任务在时间片里运行的证据。 */
+    tasks_init();
+    task_create(demo_thread);
+
     /* ⚠️ 初始化清单的最后一步永远是它：开中断总开关。
      * 忘了 sti 的症状很有迷惑性——一切正常但系统"聋了"，
      * hlt 睡死过去，谁也叫不醒。 */
     __asm__ volatile("sti");
 
     shell_run();         /* 永不返回：内核从此活在交互循环里 */
+}
+
+/* 演示用的内核线程：每约 2 秒打一个 '+'。
+ * 它和 shell 是两个独立的执行流，靠时钟中断轮流上 CPU。
+ * 注意节奏：round-robin 下它每 20ms 才轮到一次，
+ * 每次 hlt 睡 10ms，所以 100 次循环 ≈ 2 秒。 */
+static void demo_thread(void)
+{
+    for (;;) {
+        for (int i = 0; i < 100; i++)    /* 每次 hlt 睡到下一个中断(10ms) */
+            __asm__ volatile("hlt");
+        kprintf("+");
+    }
 }

@@ -90,10 +90,16 @@ irq_common:
     pusha                        /* 保存 8 个通用寄存器（32 字节，本函数的"存档"） */
     mov  eax, [esp+32]           /* pusha 之上：向量号 */
     mov  edx, [esp+36]           /* pusha 之上：错误码（恒 0） */
-    push edx                     /* cdecl 传参：从右往左，先 err 后 num */
+    push esp                     /* 第 3 参：现场指针 regs*（就是刚 pusha 的区域） */
+    push edx                     /* cdecl 从右往左：err、num、regs* */
     push eax
-    call irq_dispatch            /* C 分发器（idt.c，TODO 5） */
-    add  esp, 8                  /* 扔掉两个参数 */
+    call irq_dispatch            /* C 分发器：跑 handler，时钟中断时问调度器 */
+    add  esp, 12                 /* 扔掉三个参数；eax = 调度器给的新 esp（0=不切） */
+    test eax, eax
+    jz   .noswitch
+    mov  esp, eax                /* 切换任务：栈指针跳到新任务的保存帧上，
+                                  * 接下来的 popa+iretd 就是在新任务的地盘上恢复 */
+.noswitch:
     popa                         /* 读档：8 个寄存器原样恢复 */
     add  esp, 8                  /* 扔掉桩压的向量号+错误码 */
     iretd                        /* 弹出 eip/cs/eflags，回到被打断的代码。

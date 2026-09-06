@@ -26,8 +26,8 @@ LDFLAGS := -m elf_i386 -T linker.ld -nostdlib
 
 OBJS := $(BUILD)/boot.o $(BUILD)/isr.o $(BUILD)/console.o $(BUILD)/idt.o \
         $(BUILD)/pic.o $(BUILD)/timer.o $(BUILD)/keyboard.o $(BUILD)/mem.o \
-        $(BUILD)/paging.o $(BUILD)/heap.o $(BUILD)/string.o $(BUILD)/shell.o \
-        $(BUILD)/main.o
+        $(BUILD)/paging.o $(BUILD)/heap.o $(BUILD)/task.o $(BUILD)/string.o \
+        $(BUILD)/shell.o $(BUILD)/main.o
 
 .PHONY: all run iso clean
 all: $(TARGET)
