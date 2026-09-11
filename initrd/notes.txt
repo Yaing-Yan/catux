@@ -1,0 +1,8 @@
+CatUX notes
+============
+
+phases done: boot / console / irq / memory / shell / threads
+next: real disk driver (ATA PIO), then ext2-lite
+
+fun fact: tar 头部里的文件大小是八进制 ASCII 字符串，
+比如 "00000000014" = 12 字节。1979 年的兼容性遗产。

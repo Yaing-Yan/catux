@@ -1,0 +1,10 @@
+miao!
+
+ /\_/\
+( o.o )
+ > ^ <
+
+This file lives on CatUX's first filesystem.
+It was packed into a tar archive by the host build system,
+loaded into memory by the bootloader (initrd),
+and is now being read by kernel code that has never seen a disk.

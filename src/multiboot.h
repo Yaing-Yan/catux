@@ -34,6 +34,14 @@ struct multiboot_mmap {
 
 #define MMAP_TYPE_AVAILABLE 1
 
+/* 引导加载的模块（initrd 就是第 0 号模块） */
+struct multiboot_mod {
+    uint32_t mod_start;     /* 模块在内存里的起始物理地址 */
+    uint32_t mod_end;       /* 结束地址（不含） */
+    uint32_t cmdline;       /* 模块命令行字符串（我们不用） */
+    uint32_t pad;
+} __attribute__((packed));
+
 /* QEMU 的内存都在 4GB 以内，64 位地址的高 32 位恒为 0。
  * 内核暂用 32 位物理地址，转换时断言一下高位为零。 */
 #define ADDR64_TO32(x)  ({ uint64_t _x = (x); (uint32_t)_x; })

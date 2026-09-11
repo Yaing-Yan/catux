@@ -1,0 +1,8 @@
+Welcome to CatUX!
+
+You are reading a file from the initrd (initial ramdisk).
+The journey of this byte:
+  host:   tar 把它打进 initrd.tar
+  boot:   QEMU/GRUB 把整个归档塞进内存，Multiboot 信息里记下地址
+  kernel: fs.c 解析 tar 头，找到这个文件
+  shell:  cat 命令把它打到你的屏幕上

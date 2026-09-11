@@ -57,8 +57,10 @@ void paging_map_page(uint32_t virt, uint32_t phys, uint32_t flags)
 
 void paging_init(void)
 {
-    /* 恒等映射低 16MB：内核自己住这儿，开分页前后世界无缝衔接 */
-    for (uint32_t p = 0; p < 16u * 1024 * 1024; p += 4096)
+    /* 恒等映射低 64MB：内核自己 + initrd 都住这儿。
+     * （QEMU 把 initrd 模块放在内核镜像后面的内存里，
+     *   映射范围放宽到 64MB 保证它能被直接摸到） */
+    for (uint32_t p = 0; p < 64u * 1024 * 1024; p += 4096)
         paging_map_page(p, p, PAGE_RW);
 
     /* 魔法窗口：虚拟 0x80000000 → VGA 显存物理 0xB8000 */

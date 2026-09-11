@@ -3,3 +3,4 @@ catux.elf
 catux.iso
 iso/
 *.o
+initrd.tar

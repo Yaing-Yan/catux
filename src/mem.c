@@ -33,6 +33,21 @@ static uint32_t frame_base;     /* 0 号帧对应的物理地址（内核末尾�
 static uint32_t frame_total;    /* 实际管理的帧数 */
 static uint32_t frame_free;     /* 空闲帧数 */
 
+/* 把某个物理地址所在的帧标记为"已占用"（保留给引导程序等） */
+static void frame_mark_used(uint32_t addr)
+{
+    if (addr < frame_base)
+        return;
+    uint32_t i = (addr - frame_base) / FRAME_SIZE;
+    if (i >= frame_total)
+        return;
+    uint8_t mask = (uint8_t)(1 << (i % 8));
+    if (!(frame_bitmap[i / 8] & mask)) {   /* 尚未占用才计数 */
+        frame_bitmap[i / 8] |= mask;
+        frame_free--;
+    }
+}
+
 /* 打印 multiboot 内存地图 */
 static void print_mmap(const struct multiboot_info *mb)
 {
@@ -76,6 +91,31 @@ void mem_init(uint32_t mboot_addr)
     for (uint32_t i = 0; i < frame_total; i++) {
         frame_bitmap[i / 8] &= ~(1 << (i % 8));   /* 标记为空闲 */
         frame_free++;
+    }
+
+    /* ⚠️ 关键一步：把引导程序放进内存的模块（initrd）占用的帧
+     * 标记为已占用。否则帧分配器会把它们当空闲发出去——
+     * 页表一写就覆盖 initrd，文件系统读到全是他人的数据。
+     * （这正是真实内核 reserve bootloader 内存的原因）
+     * 要保留两块：模块数据本体 + 模块描述数组（mods_addr 处） */
+    if (mb->flags & (1 << 3)) {
+        for (uint32_t i = 0; i < mb->mods_count; i++) {
+            const struct multiboot_mod *m =
+                (const struct multiboot_mod *)(uintptr_t)(mb->mods_addr +
+                    i * sizeof(struct multiboot_mod));
+            uint32_t start = m->mod_start & ~0xFFFu;          /* 向下对齐 */
+            uint32_t end = (m->mod_end + 0xFFF) & ~0xFFFu;    /* 向上对齐 */
+            for (uint32_t a = start; a < end; a += FRAME_SIZE)
+                frame_mark_used(a);
+            kprintf("[mem] reserved %x-%x for initrd module %d\n",
+                    start, end, i);
+        }
+        uint32_t arr_start = mb->mods_addr & ~0xFFFu;
+        uint32_t arr_end = (uint32_t)(mb->mods_addr +
+            mb->mods_count * sizeof(struct multiboot_mod) + 0xFFF) & ~0xFFFu;
+        for (uint32_t a = arr_start; a < arr_end; a += FRAME_SIZE)
+            frame_mark_used(a);
+        kprintf("[mem] reserved %x-%x for mods array\n", arr_start, arr_end);
     }
 
     kprintf("[mem] managing %d frames (%d KB) from 0x%x\n",

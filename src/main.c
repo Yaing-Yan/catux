@@ -20,6 +20,7 @@
 #include "mem.h"
 #include "paging.h"
 #include "heap.h"
+#include "fs.h"
 #include "task.h"
 #include "shell.h"
 
@@ -38,8 +39,9 @@ void kmain(uint32_t magic, uint32_t addr)
     mem_init(addr);      /* 内存地图 + 页帧分配器 */
     paging_init();       /* 开分页：虚拟内存上线 */
     heap_init();         /* kmalloc/kfree 就绪 */
+    fs_init(addr);       /* 找到 initrd，文件系统上线（阶段 5） */
 
-    kprintf("CatUX v0.0.9 by GLM-5.3-Flash and Yaing Yan\n");
+    kprintf("CatUX v0.1.0 by GLM-5.3-Flash and Yaing Yan\n");
     kprintf("boot ok, multiboot magic=%x\n", magic);
 
     /* ---- 自检 ---- */

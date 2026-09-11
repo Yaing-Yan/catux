@@ -14,6 +14,7 @@
 #include "timer.h"
 #include "mem.h"
 #include "heap.h"
+#include "fs.h"
 #include "io.h"
 #include "string.h"
 #include "shell.h"
@@ -87,11 +88,38 @@ static void cmd_reboot(int argc, char **argv)
     __asm__ volatile("hlt");   /* 万一没重启成功：挂住别乱跑 */
 }
 
+static void cmd_ls(int argc, char **argv)
+{
+    (void)argc; (void)argv;
+    fs_ls();
+}
+
+static void cmd_cat(int argc, char **argv)
+{
+    if (argc < 2) {
+        kprintf("usage: cat <file>\n");
+        return;
+    }
+    char *buf = kmalloc(4096);        /* 注意：shell 也在用堆了 */
+    if (!buf) {
+        kprintf("cat: out of memory\n");
+        return;
+    }
+    int n = fs_read(argv[1], buf, 4096);
+    if (n < 0)
+        kprintf("cat: %s: no such file\n", argv[1]);
+    else
+        kprintf("%s\n", buf);
+    kfree(buf);
+}
+
 static const struct cmd cmds[] = {
     { "help",    "list commands",               cmd_help    },
     { "echo",    "print arguments",             cmd_echo    },
     { "uptime",  "seconds since boot",          cmd_uptime  },
     { "meminfo", "frames & heap usage",         cmd_meminfo },
+    { "ls",      "list files on initrd",        cmd_ls      },
+    { "cat",     "print a file: cat <file>",    cmd_cat     },
     { "clear",   "clear the screen",            cmd_clear   },
     { "about",   "who am i",                    cmd_about   },
     { "reboot",  "reboot the machine",          cmd_reboot  },
