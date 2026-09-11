@@ -123,3 +123,47 @@ IRQ 12                           /* PS/2 鼠标 */
 IRQ 13                           /* 协处理器 */
 IRQ 14                           /* 主硬盘 */
 IRQ 15                           /* 从硬盘 */
+
+/* ============ 系统调用门（阶段 6）============
+ * int 0x80 从 ring3 进来。和 IRQ 的区别：CPU 会额外压 ss/esp
+ * （因为换了栈：ring3 栈 → TSS.esp0 内核栈），
+ * 所以栈布局多两个 dword，但 iretd 会自动弹回它们，
+ * 我们照常 pusha/popa 即可，不用特殊处理。 */
+.global isr128
+isr128:
+    push 0
+    push 0x80
+    jmp syscall_common
+
+syscall_common:
+    pusha
+    mov  eax, [esp+32]
+    mov  edx, [esp+36]
+    push esp
+    push edx
+    push eax
+    call syscall_dispatch
+    add  esp, 12
+    popa
+    add  esp, 8
+    iretd
+
+/* ============ 跳进用户态（阶段 6）============
+ * enter_usermode(entry, user_stack)：
+ * 手工搭一个"从 ring3 被打断"的五层栈帧，iretd 一步跨进 ring3。
+ * 顺序：ss, esp, eflags, cs, eip（栈从下往上） */
+.global enter_usermode
+enter_usermode:
+    mov  eax, [esp+4]            /* entry */
+    mov  edx, [esp+8]            /* user_stack */
+    mov  cx, 0x23                /* 用户数据段 | RPL3 */
+    mov  ds, cx
+    mov  es, cx
+    mov  fs, cx
+    mov  gs, cx
+    push 0x23                    /* ss  = 用户数据段 */
+    push edx                     /* esp = 用户栈 */
+    push 0x202                   /* eflags：bit1 恒 1 + IF=1 */
+    push 0x1B                    /* cs  = 用户代码段 | RPL3 */
+    push eax                     /* eip = 程序入口 */
+    iretd

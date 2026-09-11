@@ -116,6 +116,14 @@ static void idt_set_gate(int n, uint32_t handler)
     idt[n].flags = 0x8E;
 }
 
+/* 硬件中断用的门是"中断门"（DPL=0，只有内核能触发）；
+ * 系统调用门必须开 DPL=3，否则用户执行 int 0x80 会触发 GP。*/
+void idt_set_user_gate(int n, uint32_t handler)
+{
+    idt_set_gate(n, handler);
+    idt[n].flags = 0xEE;   /* 存在 | DPL=3 | 32位中断门 */
+}
+
 void idt_init(void)
 {
     for (int i = 0; i < 256; i++)

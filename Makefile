@@ -24,10 +24,11 @@ CFLAGS  := -target i386-elf -ffreestanding -fno-pic -fno-pie \
            -mno-mmx -mno-sse -Wall -Wextra -O2 -g
 LDFLAGS := -m elf_i386 -T linker.ld -nostdlib
 
-OBJS := $(BUILD)/boot.o $(BUILD)/isr.o $(BUILD)/console.o $(BUILD)/idt.o \
-        $(BUILD)/pic.o $(BUILD)/timer.o $(BUILD)/keyboard.o $(BUILD)/mem.o \
-        $(BUILD)/paging.o $(BUILD)/heap.o $(BUILD)/fs.o $(BUILD)/task.o \
-        $(BUILD)/string.o $(BUILD)/shell.o $(BUILD)/main.o
+OBJS := $(BUILD)/boot.o $(BUILD)/isr.o $(BUILD)/console.o $(BUILD)/gdt.o \
+        $(BUILD)/idt.o $(BUILD)/pic.o $(BUILD)/timer.o $(BUILD)/keyboard.o \
+        $(BUILD)/mem.o $(BUILD)/paging.o $(BUILD)/heap.o $(BUILD)/fs.o \
+        $(BUILD)/syscall.o $(BUILD)/task.o $(BUILD)/string.o $(BUILD)/shell.o \
+        $(BUILD)/main.o
 
 .PHONY: all run iso clean
 all: $(TARGET)
@@ -47,13 +48,25 @@ $(BUILD):
 # QEMU 内置了一个 Multiboot 引导程序，能直接加载我们的 ELF——
 # 开发期不用每次做光盘，等做发行版时再上 GRUB。
 # -serial stdio：把串口 COM1 接到当前终端，内核日志直接打印出来。
+# 用户态程序：独立编译、链接到 0x40000000，objcopy 成扁平二进制
+USER_CFLAGS := -target i386-elf -ffreestanding -fno-pic -fno-pie \
+               -fno-stack-protector -fno-builtin -mno-mmx -mno-sse \
+               -Wall -Wextra -O2
+
+$(BUILD)/hello.elf: user/hello.c user/link.ld | $(BUILD)
+	$(CC) $(USER_CFLAGS) -c user/hello.c -o $(BUILD)/hello.o
+	$(LD) -m elf_i386 -T user/link.ld -nostdlib -o $@ $(BUILD)/hello.o
+
+$(BUILD)/hello.bin: $(BUILD)/hello.elf
+	objcopy -O binary $< $@
+
 # initrd：把 initrd/ 目录打包成 tar 当作内核的"初始磁盘"。
 # 想加文件？往 initrd/ 里放，ls/cat 立刻能看见。
 INITRD := initrd.tar
 INITRD_SRC := $(wildcard initrd/*)
 
-$(INITRD): $(INITRD_SRC)
-	tar -cf $@ -C initrd .
+$(INITRD): $(INITRD_SRC) $(BUILD)/hello.bin
+	tar -cf $@ -C initrd . -C $(CURDIR)/$(BUILD) hello.bin
 
 run: $(TARGET) $(INITRD)
 	qemu-system-i386 -kernel $(TARGET) -initrd $(INITRD) -serial stdio

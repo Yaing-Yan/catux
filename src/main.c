@@ -12,6 +12,7 @@
 #include <stdint.h>
 
 #include "console.h"
+#include "gdt.h"
 #include "idt.h"
 #include "pic.h"
 #include "irq.h"
@@ -21,6 +22,7 @@
 #include "paging.h"
 #include "heap.h"
 #include "fs.h"
+#include "syscall.h"
 #include "task.h"
 #include "shell.h"
 
@@ -32,7 +34,9 @@ void kmain(uint32_t magic, uint32_t addr)
 
     /* ---- 系统初始化（顺序不能乱：内存→中断→上层子系统）---- */
     console_init();      /* 输出先行，之后一切启动信息可见 */
+    gdt_init();          /* 自建 GDT：用户段 + TSS（必须在用用户选择子之前） */
     idt_init();          /* 异常有了去处 */
+    syscall_init();      /* 0x80 号系统调用门（DPL=3） */
     pic_remap();         /* 设备中断搬到向量 32~47 */
     timer_init();        /* 100Hz 心跳 */
     keyboard_init();     /* 键盘 → 环形缓冲 */
@@ -41,7 +45,7 @@ void kmain(uint32_t magic, uint32_t addr)
     heap_init();         /* kmalloc/kfree 就绪 */
     fs_init(addr);       /* 找到 initrd，文件系统上线（阶段 5） */
 
-    kprintf("CatUX v0.1.0 by GLM-5.3-Flash and Yaing Yan\n");
+    kprintf("CatUX v0.2.0 by GLM-5.3-Flash and Yaing Yan\n");
     kprintf("boot ok, multiboot magic=%x\n", magic);
 
     /* ---- 自检 ---- */

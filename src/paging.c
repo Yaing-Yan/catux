@@ -45,8 +45,9 @@ void paging_map_page(uint32_t virt, uint32_t phys, uint32_t flags)
         uint32_t *t = (uint32_t *)t_phys;
         for (int i = 0; i < 1024; i++)           /* 新表必须全清零： */
             t[i] = 0;                            /* 全 0 = 1024 个"不存在" */
-        page_dir[dir_i] = t_phys | PAGE_RW | PAGE_PRESENT;
+        page_dir[dir_i] = t_phys | PAGE_RW | PAGE_PRESENT | (flags & PAGE_USER);
     }
+    page_dir[dir_i] |= (flags & PAGE_USER);      /* 用户页需要目录项也带 US */
 
     uint32_t *pt = (uint32_t *)(page_dir[dir_i] & 0xFFFFF000);
     pt[tbl_i] = (phys & 0xFFFFF000) | flags | PAGE_PRESENT;

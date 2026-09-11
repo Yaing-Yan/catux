@@ -15,6 +15,7 @@
 #include "mem.h"
 #include "heap.h"
 #include "fs.h"
+#include "syscall.h"
 #include "io.h"
 #include "string.h"
 #include "shell.h"
@@ -71,6 +72,13 @@ static void cmd_clear(int argc, char **argv)
     console_clear();
 }
 
+static void cmd_ring3(int argc, char **argv)
+{
+    (void)argc; (void)argv;
+    kprintf("[shell] launching user program in ring3...\n");
+    user_run();
+}
+
 static void cmd_about(int argc, char **argv)
 {
     (void)argc; (void)argv;
@@ -120,6 +128,7 @@ static const struct cmd cmds[] = {
     { "meminfo", "frames & heap usage",         cmd_meminfo },
     { "ls",      "list files on initrd",        cmd_ls      },
     { "cat",     "print a file: cat <file>",    cmd_cat     },
+    { "ring3",   "run hello.bin in user mode",  cmd_ring3   },
     { "clear",   "clear the screen",            cmd_clear   },
     { "about",   "who am i",                    cmd_about   },
     { "reboot",  "reboot the machine",          cmd_reboot  },

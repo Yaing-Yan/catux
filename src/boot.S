@@ -34,6 +34,13 @@ stack_bottom:
     .skip 16384
 stack_top:
 
+/* 把栈顶地址导出给 C（TSS 的 esp0 要用它：ring3 进内核时换到这个栈）。
+ * 它是个"有初值的常量"，所以放 .rodata 而不是 .bss */
+.section .rodata
+.global kernel_stack_top
+kernel_stack_top:
+    .long stack_top
+
 .section .text
 .global _start                    /* 链接脚本指定 ENTRY(_start)，从这里开始 */
 _start:
