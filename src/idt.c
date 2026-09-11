@@ -152,7 +152,7 @@ static const char *exc_names[32] = {
     "Reserved",             "Reserved",            "Reserved",          "Reserved",
 };
 
-/* ==================== TODO 4：异常分发器 ====================
+/* ==================== 实现要点 4：异常分发器 ====================
  * 汇编桩会把 (num, err) 当作两个参数传进来。
  * 用你已经会用的 kprintf 实现：
  *   1. 打印一行警报，格式（绿色可以用 vga_set_color(0x0C, 0) 红字）：
@@ -164,7 +164,7 @@ static const char *exc_names[32] = {
 void isr_dispatch(uint32_t num, uint32_t err)
 {
 
-    /* TODO 4 */
+    /* 实现：见上方说明 */
     vga_set_color(0x0C, 0);
 
     const char *name;
@@ -186,7 +186,7 @@ void irq_register(int irq, irq_handler_t handler)
     irq_handlers[irq] = handler;
 }
 
-/* ==================== TODO 5：中断分发 + EOI 应答 ====================
+/* ==================== 实现要点 5：中断分发 + EOI 应答 ====================
  * 汇编桩（isr.S 的 irq_common）把 (向量号, 错误码) 传进来。
  * 和异常不同：这里处理完要 return，桩会恢复寄存器、iret 回去
  * 继续跑被打断的代码——所以绝对不能在这里挂机！

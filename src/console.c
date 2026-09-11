@@ -6,8 +6,8 @@
  *                              emit()
  *     串口 COM1（日志/调试） ←──┘
  *
- * ⚠️ 有三个标了 TODO 的函数留给你实现，提示都写在注释里。
- *    写完 make && make run，用 main.c 里的输出做验收。
+ * ⚠️ 下方"实现要点"注释记录了三处关键实现的设计思路
+ *    （硬件光标 / 滚动 / 递归打印数字），维护时先读它们。
  */
 
 #include <stdarg.h>
@@ -45,7 +45,7 @@ static void serial_putc(char ch)
     outb(COM1, (uint8_t)ch);
 }
 
-/* ==================== TODO 1：驯服硬件光标 ====================
+/* ==================== 实现要点 1：驯服硬件光标 ====================
  * 现象：屏幕左边有个"幽灵下划线"，打印时它一动不动。
  * 原因：那根下划线是显卡里的"硬件光标"，位置存在显卡的寄存器里，
  *       BIOS 开机时设过一次，我们的内核还从来不管它。
@@ -63,7 +63,7 @@ static void vga_update_cursor(void)
 {
     uint16_t pos = (uint16_t)(cur_row * VGA_COLS + cur_col);
     (void)pos;
-    /* TODO 1：写 4 行 outb，把 pos 的高 8 位送进 0x0E 号寄存器、
+    /* 实现要点 1：写 4 行 outb，把 pos 的高 8 位送进 0x0E 号寄存器、
      * 低 8 位送进 0x0F 号寄存器 */
     outb(0x3D4, 0x0E);
     outb(0x3D5, pos >> 8);
@@ -71,7 +71,7 @@ static void vga_update_cursor(void)
     outb(0x3D5, pos & 0xFF);
 }
 
-/* ==================== TODO 2：滚动 ====================
+/* ==================== 实现要点 2：滚动 ====================
  * 现象：写满 25 行后，新内容会全部叠在第 24 行（最后一行）上互相覆盖。
  * 正确行为：整个屏幕内容上移一行（最顶行被顶掉），
  *           最后一行清成空格，新内容继续在最后一行打印。
@@ -85,7 +85,7 @@ static void vga_update_cursor(void)
  * cur_row 的调整 emit() 已经处理好了，不用你管。 */
 static void vga_scroll(void)
 {
-    /* TODO 2 */
+    /* 实现：见上方说明 */
     for (int r = 1;r <= VGA_ROWS-1;r++) {
         for (int c = 0; c < VGA_COLS; c++) {
             VGA_MEM[(r-1)*VGA_COLS + c] = VGA_MEM[r*VGA_COLS + c];
@@ -96,7 +96,7 @@ static void vga_scroll(void)
 }
 
 
-/* ==================== TODO 3：打印无符号数 ====================
+/* ==================== 实现要点 3：打印无符号数 ====================
  * kprintf 的 %d 和 %x 全靠它：把 v 按 base 进制逐位打印出来。
  * 它没实现之前，屏幕上的数字都是空的。
  *
@@ -111,7 +111,7 @@ static void vga_scroll(void)
 static void emit(char ch);
 static void print_uint(uint32_t v, uint32_t base)
 {
-    /* TODO 3 */
+    /* 实现：见上方说明 */
     static const char digits[] = "0123456789abcdef";
     if (v/base != 0) {
         print_uint(v/base, base);
